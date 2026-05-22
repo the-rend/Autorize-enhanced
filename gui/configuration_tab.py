@@ -11,7 +11,11 @@ from javax.swing import JSplitPane
 from javax.swing import JCheckBox
 from javax.swing import JButton
 from javax.swing import JPanel
+from javax.swing import JLabel
+from javax.swing import JSeparator
 from java.awt import Dimension
+from java.awt import BorderLayout
+from java.awt import FlowLayout
 
 from table import UpdateTableEDT
 
@@ -44,6 +48,7 @@ class ConfigurationTab():
 
         self._extender.clearButton = JButton("Clear table", actionPerformed=self.clearTable)
         self._extender.clearButton.setBounds(10, 80, 100, 30)
+
         self._extender.autoScroll = JCheckBox("Auto scroll")
         self._extender.autoScroll.setBounds(145, 80, 130, 30)
 
@@ -64,45 +69,19 @@ class ConfigurationTab():
         self._extender.replaceQueryParam.setBounds(280, 85, 300, 30)
         self._extender.replaceQueryParam.setSelected(False)
 
-        self._extender.filtersTabs = JTabbedPane()
-        self._extender.filtersTabs = self._extender.filtersTabs
-        self._extender.filtersTabs.addTab("Unauthentication Detector ", self._extender.EDPnlUnauth)
-        self._extender.filtersTabs.addTab("Interception Filters", self._extender.filtersPnl)
-        self._extender.filtersTabs.addTab("Table Filter", self._extender.filterPnl)
-        self._extender.filtersTabs.addTab("Save/Restore", self._extender.exportPnl)
-
-        self._extender.filtersTabs.setSelectedIndex(1)
-        self._extender.filtersTabs.setBounds(0, 350, 2000, 700)
-
-        self.config_pnl = JPanel()
-        layout = GroupLayout(self.config_pnl)
-        self.config_pnl.setLayout(layout)
-        layout.setAutoCreateGaps(True)
-        layout.setAutoCreateContainerGaps(True)
+        settings_panel = JPanel()
+        settings_layout = GroupLayout(settings_panel)
+        settings_panel.setLayout(settings_layout)
+        settings_layout.setAutoCreateGaps(True)
+        settings_layout.setAutoCreateContainerGaps(True)
 
         minsize = Dimension(0, 0)
-        self._extender.filtersTabs.setMinimumSize(minsize)
-        self.config_pnl.setMinimumSize(minsize)
+        settings_panel.setMinimumSize(minsize)
 
-        layout.setHorizontalGroup(
-            layout.createSequentialGroup()
+        settings_layout.setHorizontalGroup(
+            settings_layout.createSequentialGroup()
                 .addGroup(
-                    layout.createParallelGroup()
-                    .addComponent(
-                            self._extender.startButton,
-                            GroupLayout.PREFERRED_SIZE,
-                            GroupLayout.PREFERRED_SIZE,
-                            GroupLayout.PREFERRED_SIZE,
-                            )
-                    .addComponent(
-                        self._extender.clearButton,
-                        GroupLayout.PREFERRED_SIZE,
-                        GroupLayout.PREFERRED_SIZE,
-                        GroupLayout.PREFERRED_SIZE,
-                        )
-                    )
-                .addGroup(
-                    layout.createParallelGroup()
+                    settings_layout.createParallelGroup()
                         .addComponent(
                             self._extender.ignore304,
                             GroupLayout.PREFERRED_SIZE,
@@ -141,46 +120,35 @@ class ConfigurationTab():
                         )
                     )
             )
-        
-        layout.setVerticalGroup(
-                layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
 
-                    .addComponent(
-                            self._extender.startButton,
-                            GroupLayout.PREFERRED_SIZE,
-                            GroupLayout.PREFERRED_SIZE,
-                            GroupLayout.PREFERRED_SIZE,
-                            )
+        settings_layout.setVerticalGroup(
+                settings_layout.createSequentialGroup()
                     .addComponent(
                         self._extender.ignore304,
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
                     )
-                )
                     .addComponent(
                         self._extender.prevent304,
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
                     )
-                    .addGroup(layout.createParallelGroup(GroupLayout.Alignment.BASELINE)
                     .addComponent(
-                        self._extender.clearButton,
+                        self._extender.interceptRequestsfromRepeater,
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
-                        )
-                    .addComponent(
-                            self._extender.interceptRequestsfromRepeater,
-                            GroupLayout.PREFERRED_SIZE,
-                            GroupLayout.PREFERRED_SIZE,
-                            GroupLayout.PREFERRED_SIZE,
-                        )
-                )
+                    )
                     .addComponent(
                         self._extender.doUnauthorizedRequest,
+                        GroupLayout.PREFERRED_SIZE,
+                        GroupLayout.PREFERRED_SIZE,
+                        GroupLayout.PREFERRED_SIZE,
+                    )
+                    .addComponent(
+                        self._extender.autoScroll,
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
@@ -191,19 +159,97 @@ class ConfigurationTab():
                         GroupLayout.PREFERRED_SIZE,
                         GroupLayout.PREFERRED_SIZE,
                     )
-                    .addComponent(
-                            self._extender.autoScroll,
-                            GroupLayout.PREFERRED_SIZE,
-                            GroupLayout.PREFERRED_SIZE,
-                            GroupLayout.PREFERRED_SIZE,
-                        )
                 )
-        
-        self._extender._cfg_splitpane = JSplitPane(JSplitPane.VERTICAL_SPLIT)
-        self._extender._cfg_splitpane.setResizeWeight(0.5)
-        self._extender._cfg_splitpane.setBounds(0, 0, 1000, 1000)
-        self._extender._cfg_splitpane.setRightComponent(self._extender.filtersTabs)
-        self._extender._cfg_splitpane.setLeftComponent(self.config_pnl)
+
+        filters_panel = JPanel()
+        filters_layout = GroupLayout(filters_panel)
+        filters_panel.setLayout(filters_layout)
+        filters_layout.setAutoCreateGaps(True)
+        filters_layout.setAutoCreateContainerGaps(True)
+
+        table_label = JLabel("Table Filter")
+        interception_label = JLabel("Interception Filters")
+        horizontal_line = JSeparator(JSeparator.HORIZONTAL)
+
+        filters_layout.setHorizontalGroup(
+            filters_layout.createParallelGroup()
+                .addComponent(
+                    interception_label,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                )
+                .addComponent(
+                    self._extender.filtersPnl,
+                    GroupLayout.DEFAULT_SIZE,
+                    GroupLayout.DEFAULT_SIZE,
+                    2147483647,
+                )
+                .addComponent(
+                    horizontal_line,
+                    GroupLayout.DEFAULT_SIZE,
+                    GroupLayout.DEFAULT_SIZE,
+                    2147483647,
+                )
+                .addComponent(
+                    table_label,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                )
+                .addComponent(
+                    self._extender.filterPnl,
+                    GroupLayout.DEFAULT_SIZE,
+                    GroupLayout.DEFAULT_SIZE,
+                    2147483647,
+                )
+        )
+
+        filters_layout.setVerticalGroup(
+            filters_layout.createSequentialGroup()
+                .addComponent(
+                    table_label,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                )
+                .addComponent(
+                    self._extender.filterPnl,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                )
+                .addComponent(
+                    horizontal_line,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                )
+                .addComponent(
+                    interception_label,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                )
+                .addComponent(
+                    self._extender.filtersPnl,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                    GroupLayout.PREFERRED_SIZE,
+                )
+        )
+
+        settings_tab = JPanel(BorderLayout())
+        settings_tab.add(settings_panel, BorderLayout.NORTH)
+
+        self._extender._cfg_tabs = JTabbedPane()
+        self._extender._cfg_tabs.addTab("General", settings_tab)
+        self._extender._cfg_tabs.addTab("Filters", filters_panel)
+        self._extender._cfg_tabs.addTab("Save/Restore", self._extender.exportPnl)
+        self._extender._cfg_tabs.setSelectedIndex(0)
+        self._extender._cfg_tabs.setMinimumSize(minsize)
+
+        self._extender._cfg_splitpane = self._extender._cfg_tabs
 
     def startOrStop(self, event):
         if self._extender.startButton.getText() == "Autorize is off":

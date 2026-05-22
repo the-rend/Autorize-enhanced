@@ -5,7 +5,6 @@ from java.awt.datatransfer import StringSelection
 from javax.swing.table import TableRowSorter
 from java.awt.event import AdjustmentListener
 from java.awt.event import ActionListener
-from java.awt.event import MouseAdapter
 from javax.swing import JSplitPane
 from javax.swing import JMenuItem
 from javax.swing import JMenu
@@ -15,9 +14,12 @@ from javax.swing import JTabbedPane
 from javax.swing import JPanel
 from javax.swing import JButton
 from javax.swing import JLabel
+from javax.swing import JSeparator
+from javax.swing.border import EmptyBorder
 from javax.swing import JCheckBoxMenuItem
 from javax.swing import ImageIcon
-from java.awt import GridLayout
+from javax.swing import JFrame
+from java.awt import BorderLayout
 from java.awt import FlowLayout
 from java.awt import Toolkit
 from java.awt import Color as AwtColor
@@ -37,11 +39,10 @@ from authorization.authorization import handle_message, retestAllRequests
 from thread import start_new_thread
 
 from table import Table, TableRowFilter, resolve_modified_repeater_target
-from helpers.filters import expand, collapse, rebuildViewerPanel
+from helpers.filters import rebuildViewerPanel
 from javax.swing import KeyStroke
 from javax.swing import JTable
 from javax.swing import AbstractAction
-from javax.swing.event import ChangeListener, ChangeEvent
 from javax.swing.event import PopupMenuListener
 from java.awt.event import KeyEvent
 from java.awt.event import InputEvent
@@ -55,6 +56,8 @@ class ITabImpl(ITab):
         return "Autorize"
     
     def getUiComponent(self):
+        if hasattr(self._extender, '_main_panel') and self._extender._main_panel:
+            return self._extender._main_panel
         return self._extender._splitpane
 
 class Tabs():
@@ -69,12 +72,44 @@ class Tabs():
 
         self.setupDynamicColumns()
 
-        self._extender._splitpane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT)
-        self._extender._splitpane.setResizeWeight(1)
+        self._extender._splitpane = JSplitPane(JSplitPane.VERTICAL_SPLIT)
+        self._extender._splitpane.setResizeWeight(0.65)
         self._extender.scrollPane = JScrollPane(self._extender.logTable)
         self._extender.scrollPane.setMinimumSize(Dimension(1,1))
-        self._extender._splitpane.setLeftComponent(self._extender.scrollPane)
+        self._extender._splitpane.setTopComponent(self._extender.scrollPane)
         self._extender.scrollPane.getVerticalScrollBar().addAdjustmentListener(AutoScrollListener(self._extender))
+
+        self._extender._main_panel = JPanel(BorderLayout())
+        self._extender.top_actions_panel = JPanel(FlowLayout(FlowLayout.CENTER, 8, 5))
+
+        self._extender.startButton.setBorderPainted(True)
+        self._extender.startButton.setFocusPainted(False)
+        self._extender.top_actions_panel.add(self._extender.startButton)
+
+        leftSeparator = JSeparator(JSeparator.VERTICAL)
+        leftSeparator.setPreferredSize(Dimension(1, 20))
+        self._extender.top_actions_panel.add(leftSeparator)
+
+        self._extender.openConfigurationButton = JButton("Configuration")
+        self._extender.openConfigurationButton.addActionListener(
+            OpenFloatingPanelWindow(self._extender, '_configuration_frame', 'Autorize - Configuration', '_cfg_splitpane')
+        )
+        self._extender.openUsersButton = JButton("Users")
+        self._extender.openUsersButton.addActionListener(
+            OpenFloatingPanelWindow(self._extender, '_users_frame', 'Autorize - Users', 'userPanel')
+        )
+        self._extender.top_actions_panel.add(self._extender.openUsersButton)
+        self._extender.top_actions_panel.add(self._extender.openConfigurationButton)
+
+        rightSeparator = JSeparator(JSeparator.VERTICAL)
+        rightSeparator.setPreferredSize(Dimension(1, 20))
+        self._extender.top_actions_panel.add(rightSeparator)
+
+        self._extender.clearButton.setFocusPainted(False)
+        self._extender.top_actions_panel.add(self._extender.clearButton)
+
+        self._extender._main_panel.add(self._extender.top_actions_panel, BorderLayout.NORTH)
+        self._extender._main_panel.add(self._extender._splitpane, BorderLayout.CENTER)
 
         copyURLitem = JMenuItem("Copy URL")
         copyURLitem.addActionListener(CopySelectedURL(self._extender))
@@ -129,11 +164,8 @@ class Tabs():
         self._extender.menu.add(retestAllitem)
         self._extender.menu.add(deleteSelectedItem)
 
-        self._extender.tabs = JTabbedPane()
-
         self._extender.user_viewers = {}
         self._extender.viewer_visibility = {'original': True, 'unauthenticated': True}
-        self._extender._viewer_last_content_tab = {}
 
         message_editor = MessageEditor(self._extender)
 
@@ -143,73 +175,44 @@ class Tabs():
         self._extender._unauthorizedrequestViewer = self._extender._callbacks.createMessageEditor(message_editor, False)
         self._extender._unauthorizedresponseViewer = self._extender._callbacks.createMessageEditor(message_editor, False)        
 
-        self._extender.original_requests_tabs = JTabbedPane()
-        self._extender.original_requests_tabs.addMouseListener(Mouseclick(self._extender))
-        self._extender.original_requests_tabs.addChangeListener(ViewerTabChangeListener(self._extender))
-        self._extender.original_requests_tabs.addTab("Original Request", self._extender._originalrequestViewer.getComponent())
-        self._extender.original_requests_tabs.addTab("Original Response", self._extender._originalresponseViewer.getComponent())
-        self._extender.original_requests_tabs.addTab("Expand", None)
-        self._extender.original_requests_tabs.setSelectedIndex(0)
-        self._extender._viewer_last_content_tab[id(self._extender.original_requests_tabs)] = 0
+        self._extender.original_requests_tabs = self._create_split_viewer_panel(
+            self._extender._originalrequestViewer.getComponent(),
+            self._extender._originalresponseViewer.getComponent()
+        )
 
-        self._extender.unauthenticated_requests_tabs = JTabbedPane()
-        self._extender.unauthenticated_requests_tabs.addMouseListener(Mouseclick(self._extender))
-        self._extender.unauthenticated_requests_tabs.addChangeListener(ViewerTabChangeListener(self._extender))
-        self._extender.unauthenticated_requests_tabs.addTab("Unauthenticated Request", self._extender._unauthorizedrequestViewer.getComponent())
-        self._extender.unauthenticated_requests_tabs.addTab("Unauthenticated Response", self._extender._unauthorizedresponseViewer.getComponent())
-        self._extender.unauthenticated_requests_tabs.addTab("Expand", None)
-        self._extender.unauthenticated_requests_tabs.setSelectedIndex(0)
-        self._extender._viewer_last_content_tab[id(self._extender.unauthenticated_requests_tabs)] = 0
+        self._extender.unauthenticated_requests_tabs = self._create_split_viewer_panel(
+            self._extender._unauthorizedrequestViewer.getComponent(),
+            self._extender._unauthorizedresponseViewer.getComponent()
+        )
 
         if hasattr(self._extender, 'userTab') and self._extender.userTab:
             for user_id in sorted(self._extender.userTab.user_tabs.keys()):
                 user_name = self._extender.userTab.user_tabs[user_id]['user_name']
                 self.createUserViewerTabs(user_id, user_name)
 
-        self._extender.requests_panel = JPanel(GridLayout(0, 1))
+        self._extender.requests_panel = JTabbedPane()
         rebuildViewerPanel(self._extender)
 
-        self._extender.tabs.addTab("Request/Response Viewers", self._extender.requests_panel)
-
-        tabIndex = self._extender.tabs.indexOfTab("Request/Response Viewers")
-        tabHeader = JPanel(FlowLayout(FlowLayout.LEFT, 5, 0))
-        tabHeader.setOpaque(False)
-        tabLabel = JLabel("Request/Response Viewers")
-        eyeButton = JButton(createEyeIcon(16))
-        eyeButton.setToolTipText("Toggle viewer visibility")
-        eyeButton.setBorderPainted(False)
-        eyeButton.setContentAreaFilled(False)
-        eyeButton.setFocusPainted(False)
-        eyeButton.addActionListener(ShowVisibilityPopup(self._extender))
-        tabHeader.add(tabLabel)
-        tabHeader.add(eyeButton)
-        self._extender.tabs.setTabComponentAt(tabIndex, tabHeader)
-        
-        self._extender.tabs.addTab("Configuration", self._extender._cfg_splitpane)
-        self._extender.tabs.setSelectedIndex(1)
-        self._extender.tabs.setMinimumSize(Dimension(1,1))
-        self._extender._splitpane.setRightComponent(self._extender.tabs)
-
-        self._extender.tabs.addTab("Users", self._extender.userPanel)
+        self._extender.viewer_section_panel = JPanel(BorderLayout())
+        self._extender.viewer_section_panel.add(self._extender.requests_panel, BorderLayout.CENTER)
+        self._extender.viewer_section_panel.setMinimumSize(Dimension(1,1))
+        self._extender._splitpane.setBottomComponent(self._extender.viewer_section_panel)
 
     def createUserViewerTabs(self, user_id, user_name):
         user_msg_editor = UserMessageEditor(self._extender, user_id)
         requestViewer = self._extender._callbacks.createMessageEditor(user_msg_editor, False)
         responseViewer = self._extender._callbacks.createMessageEditor(user_msg_editor, False)
 
-        tabs = JTabbedPane()
-        tabs.addMouseListener(Mouseclick(self._extender))
-        tabs.addChangeListener(ViewerTabChangeListener(self._extender))
-        tabs.addTab("{} Request".format(user_name), requestViewer.getComponent())
-        tabs.addTab("{} Response".format(user_name), responseViewer.getComponent())
-        tabs.addTab("Expand", None)
-        tabs.setSelectedIndex(0)
-        self._extender._viewer_last_content_tab[id(tabs)] = 0
+        split_view = JSplitPane(JSplitPane.HORIZONTAL_SPLIT)
+        split_view.setResizeWeight(0.5)
+        split_view.setLeftComponent(requestViewer.getComponent())
+        split_view.setRightComponent(responseViewer.getComponent())
+        split_view.setMinimumSize(Dimension(1,1))
 
         self._extender.user_viewers[user_id] = {
             'requestViewer': requestViewer,
             'responseViewer': responseViewer,
-            'tabs': tabs,
+            'panel': split_view,
             'user_name': user_name
         }
 
@@ -226,10 +229,8 @@ class Tabs():
 
     def renameUserViewerTabs(self, user_id, new_name):
         if user_id in self._extender.user_viewers:
-            viewer = self._extender.user_viewers[user_id]
-            viewer['user_name'] = new_name
-            viewer['tabs'].setTitleAt(0, "{} Request".format(new_name))
-            viewer['tabs'].setTitleAt(1, "{} Response".format(new_name))
+            self._extender.user_viewers[user_id]['user_name'] = new_name
+            rebuildViewerPanel(self._extender)
 
     def sync_log_table_sorter(self):
         """Rebuild row sorter so added/removed user columns appear (TableRowSorter can stay stale)."""
@@ -248,6 +249,14 @@ class Tabs():
 
     def refreshTable(self):
         self.setupDynamicColumns()
+
+    def _create_split_viewer_panel(self, request_component, response_component):
+        split_view = JSplitPane(JSplitPane.HORIZONTAL_SPLIT)
+        split_view.setResizeWeight(0.5)
+        split_view.setLeftComponent(request_component)
+        split_view.setRightComponent(response_component)
+        split_view.setMinimumSize(Dimension(1,1))
+        return split_view
 
 def _context_menu_user_label(extender, user_id):
     if hasattr(extender, "userTab") and extender.userTab and user_id in extender.userTab.user_tabs:
@@ -474,29 +483,40 @@ class UserMessageEditor(IMessageEditorController):
             return user_data['requestResponse'].getResponse()
         return self._extender._currentlyDisplayedItem._originalrequestResponse.getResponse()
 
-class ViewerTabChangeListener(ChangeListener):
-    def __init__(self, extender):
+class OpenFloatingPanelWindow(ActionListener):
+    def __init__(self, extender, frame_attr, title, panel_attr):
         self._extender = extender
+        self._frame_attr = frame_attr
+        self._title = title
+        self._panel_attr = panel_attr
 
-    def stateChanged(self, evt):
-        comp = evt.getSource()
-        idx = comp.getSelectedIndex()
-        if idx in (0, 1):
-            self._extender._viewer_last_content_tab[id(comp)] = idx
+    def actionPerformed(self, e):
+        panel = getattr(self._extender, self._panel_attr, None)
+        if panel is None:
+            return
 
-class Mouseclick(MouseAdapter):
-    def __init__(self, extender):
-        self._extender = extender
+        frame = getattr(self._extender, self._frame_attr, None)
+        if frame is not None and frame.isDisplayable():
+            frame.setVisible(True)
+            frame.toFront()
+            frame.requestFocus()
+            return
 
-    def mouseReleased(self, evt):
-        comp = evt.getComponent()
-        if comp.getSelectedIndex() == 2:
-            last_content = self._extender._viewer_last_content_tab.get(id(comp), 0)
-            if self._extender.expanded_requests == 0:
-                expand(self._extender, comp)
-            else:
-                collapse(self._extender, comp)
-            comp.setSelectedIndex(last_content)
+        frame = JFrame(self._title)
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE)
+        content = JPanel(BorderLayout())
+        content.setBorder(EmptyBorder(12, 12, 12, 12))
+        content.add(panel, BorderLayout.CENTER)
+        frame.getContentPane().setLayout(BorderLayout())
+        frame.getContentPane().add(content, BorderLayout.CENTER)
+        if self._frame_attr in ('_configuration_frame', '_users_frame'):
+            frame.pack()
+        else:
+            frame.setSize(1000, 700)
+        frame.setLocationRelativeTo(None)
+        frame.setVisible(True)
+
+        setattr(self._extender, self._frame_attr, frame)
 
 def createEyeIcon(size=16):
     img = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)

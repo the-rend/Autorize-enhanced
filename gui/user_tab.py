@@ -92,7 +92,7 @@ class UserTab():
     def draw(self):
         self._extender.userPanel = JPanel(BorderLayout())
         
-        buttonPanel = JPanel(FlowLayout(FlowLayout.LEFT))
+        buttonPanel = JPanel(FlowLayout(FlowLayout.CENTER))
         
         self.addUserBtn = JButton("Add User")
         self.addUserBtn.addActionListener(AddUserAction(self))
@@ -126,11 +126,6 @@ class UserTab():
 
         userPanel = JPanel(BorderLayout())
         
-        headerPanel = JPanel(FlowLayout(FlowLayout.LEFT))
-        headerLabel = JLabel(unique_user_name)
-        headerLabel.setFont(Font("Tahoma", Font.BOLD, 12))
-        headerPanel.add(headerLabel)
-        
         userSubTabs = JTabbedPane()
         
         user_headers = UserHeaders(self.user_count, self._extender)
@@ -151,7 +146,6 @@ class UserTab():
         userSubTabs.addTab("Enforcement Detector", user_ed.EDPnl)
         userSubTabs.addTab("Match/Replace", user_mr.MRPnl)
         
-        userPanel.add(headerPanel, BorderLayout.NORTH)
         userPanel.add(userSubTabs, BorderLayout.CENTER)
         
         self.user_tabs[self.user_count] = {
@@ -162,7 +156,6 @@ class UserTab():
             'headers_instance': user_headers,
             'ed_instance': user_ed,
             'mr_instance': user_mr,
-            'header_label': headerLabel
         }
         
         self.userTabs.addTab(unique_user_name, userPanel)
@@ -293,7 +286,6 @@ class UserTab():
 
                 for user_id, user_data in self.user_tabs.items():
                     if user_data['panel'] == selected_panel:
-                        user_data['header_label'].setText(unique_name)
                         user_data['user_name'] = unique_name
                         if hasattr(self._extender, 'tabs_instance') and self._extender.tabs_instance:
                             self._extender.tabs_instance.renameUserViewerTabs(user_id, unique_name)

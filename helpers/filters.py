@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- 
 
-from java.awt import GridLayout
+from javax.swing import JPanel
+from javax.swing import JLabel
+from java.awt import FlowLayout
 from burp import IInterceptedProxyMessage
 
 def addFilterHelper(typeObj, model, textObj):
@@ -26,50 +28,57 @@ def modFilterHelper(listObj, typeObj, textObj):
                 listObj.getModel().remove(index)
 
 def expand(extender, comp):
-        comp.setTitleAt(2, "Collapse")
-        extender.requests_panel.removeAll()
-        extender.requests_panel.add(comp)
-        extender.requests_panel.setLayout(GridLayout(1,0))
-        extender.requests_panel.revalidate()
-        extender.requests_panel.repaint()
-        extender.expanded_requests = 1
+        if not hasattr(extender, 'requests_panel'):
+                return
+        for idx in range(extender.requests_panel.getTabCount()):
+                if extender.requests_panel.getComponentAt(idx) == comp:
+                        extender.requests_panel.setSelectedIndex(idx)
+                        break
+        extender.expanded_requests = 0
 
 def collapse(extender, comp):
-        comp.setTitleAt(2, "Expand")
         rebuildViewerPanel(extender)
 
-def rebuildViewerPanel(extender):
-        all_viewer_tabs = []
-        if hasattr(extender, 'original_requests_tabs'):
-                all_viewer_tabs.append(extender.original_requests_tabs)
-        if hasattr(extender, 'unauthenticated_requests_tabs'):
-                all_viewer_tabs.append(extender.unauthenticated_requests_tabs)
-        if hasattr(extender, 'user_viewers'):
-                all_viewer_tabs.extend([v['tabs'] for v in extender.user_viewers.values()])
-        for tabs in all_viewer_tabs:
-                if tabs.getTabCount() > 2:
-                        tabs.setTitleAt(2, "Expand")
+def _set_centered_tab_header(tabbed_pane, tab_index, title):
+        header = JPanel(FlowLayout(FlowLayout.CENTER, 0, 0))
+        header.setOpaque(False)
+        header.add(JLabel(title))
+        tabbed_pane.setTabComponentAt(tab_index, header)
 
+def rebuildViewerPanel(extender):
+        if not hasattr(extender, 'requests_panel'):
+                return
         extender.requests_panel.removeAll()
-        visible_count = 0
+
+        viewer_entries = []
 
         if hasattr(extender, 'user_viewers'):
                 for user_id in sorted(extender.user_viewers.keys()):
                         key = 'user_{}'.format(user_id)
                         if extender.viewer_visibility.get(key, True):
-                                extender.requests_panel.add(extender.user_viewers[user_id]['tabs'])
-                                visible_count += 1
+                                viewer_entries.append((
+                                        key,
+                                        extender.user_viewers[user_id]['user_name'],
+                                        extender.user_viewers[user_id]['panel']
+                                ))
 
         if extender.viewer_visibility.get('original', True):
-                extender.requests_panel.add(extender.original_requests_tabs)
-                visible_count += 1
+                viewer_entries.append(('original', 'Original', extender.original_requests_tabs))
 
         if extender.viewer_visibility.get('unauthenticated', True):
-                extender.requests_panel.add(extender.unauthenticated_requests_tabs)
-                visible_count += 1
+                viewer_entries.append(('unauthenticated', 'Unauthenticated', extender.unauthenticated_requests_tabs))
 
-        if visible_count > 0:
-                extender.requests_panel.setLayout(GridLayout(visible_count, 0))
+        for _, title, tabs in viewer_entries:
+                extender.requests_panel.addTab(title, tabs)
+                if title not in ('Original', 'Unauthenticated'):
+                        _set_centered_tab_header(
+                                extender.requests_panel,
+                                extender.requests_panel.indexOfComponent(tabs),
+                                title
+                        )
+
+        if extender.requests_panel.getTabCount() > 0:
+                extender.requests_panel.setSelectedIndex(0)
 
         extender.requests_panel.revalidate()
         extender.requests_panel.repaint()

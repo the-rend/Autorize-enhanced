@@ -25,7 +25,7 @@ class Initiator():
         self._extender._lock = Lock()
 
         self._extender.BYPASSSED_STR = "Bypassed!"
-        self._extender.IS_ENFORCED_STR = "Is enforced??? (please configure enforcement detector)"
+        self._extender.IS_ENFORCED_STR = "Is enforced???"
         self._extender.ENFORCED_STR = "Enforced!"
         
         self._extender.intercept = 0
@@ -75,11 +75,19 @@ class Initiator():
 
 
     def init_ui(self):
+        if hasattr(self._extender, '_main_panel') and self._extender._main_panel:
+            self._extender._callbacks.customizeUiComponent(self._extender._main_panel)
         self._extender._callbacks.customizeUiComponent(self._extender._splitpane)
         self._extender._callbacks.customizeUiComponent(self._extender.logTable)
         self._extender._callbacks.customizeUiComponent(self._extender.scrollPane)
-        self._extender._callbacks.customizeUiComponent(self._extender.tabs)
-        self._extender._callbacks.customizeUiComponent(self._extender.filtersTabs)
+        if hasattr(self._extender, 'requests_panel') and self._extender.requests_panel:
+            self._extender._callbacks.customizeUiComponent(self._extender.requests_panel)
+        if hasattr(self._extender, 'viewer_section_panel') and self._extender.viewer_section_panel:
+            self._extender._callbacks.customizeUiComponent(self._extender.viewer_section_panel)
+        if hasattr(self._extender, '_cfg_tabs') and self._extender._cfg_tabs:
+            self._extender._callbacks.customizeUiComponent(self._extender._cfg_tabs)
+        elif hasattr(self._extender, '_cfg_splitpane') and self._extender._cfg_splitpane:
+            self._extender._callbacks.customizeUiComponent(self._extender._cfg_splitpane)
 
     def print_welcome_message(self):
         print("""Thank you for installing Autorize v{} extension

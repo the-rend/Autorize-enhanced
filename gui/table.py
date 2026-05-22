@@ -238,6 +238,7 @@ class Table(JTable):
         self.setModel(self._extender.tableModel)
         self.addMouseListener(Mouseclick(self._extender))
         self.setRowSelectionAllowed(True)
+        self.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS)
 
         # Enables multi-row selection
         self.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
@@ -246,11 +247,46 @@ class Table(JTable):
     def updateColumnWidths(self):
         if self.getColumnCount() > 0:
             column_model = self.getColumnModel()
-            widths_by_data_col = [50, 80, 300, 80, 80, 120]
+            if self.getRowCount() == 0:
+                widths_by_data_col = [50, 80, 300, 80, 80, 120]
+                self.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS)
+                for view_idx in range(self.getColumnCount()):
+                    data_col = self._extender.tableModel.getDataColumnIndex(view_idx)
+                    width = widths_by_data_col[data_col] if data_col < len(widths_by_data_col) else 100
+                    column = column_model.getColumn(view_idx)
+                    column.setPreferredWidth(width)
+                    if data_col != 2:
+                        column.setMinWidth(width)
+                        column.setMaxWidth(width)
+                        column.setResizable(False)
+                return
+
+            self.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS)
+            header_renderer = self.getTableHeader().getDefaultRenderer()
             for view_idx in range(self.getColumnCount()):
                 data_col = self._extender.tableModel.getDataColumnIndex(view_idx)
-                width = widths_by_data_col[data_col] if data_col < len(widths_by_data_col) else 100
-                column_model.getColumn(view_idx).setPreferredWidth(width)
+                column = column_model.getColumn(view_idx)
+
+                header_value = column.getHeaderValue()
+                header_comp = header_renderer.getTableCellRendererComponent(
+                    self,
+                    header_value,
+                    False,
+                    False,
+                    -1,
+                    view_idx,
+                )
+                max_width = header_comp.getPreferredSize().width + 8
+                for row_idx in range(self.getRowCount()):
+                    renderer = self.getCellRenderer(row_idx, view_idx)
+                    comp = self.prepareRenderer(renderer, row_idx, view_idx)
+                    max_width = max(max_width, comp.getPreferredSize().width + 8)
+
+                column.setPreferredWidth(max_width)
+                if data_col != 2:
+                    column.setMinWidth(max_width)
+                    column.setMaxWidth(max_width)
+                    column.setResizable(False)
 
     def prepareRenderer(self, renderer, row, col):
         comp = JTable.prepareRenderer(self, renderer, row, col)
@@ -369,7 +405,7 @@ class Table(JTable):
                 user_id = user_ids[user_index]
                 key = 'user_{}'.format(user_id)
                 if self._extender.viewer_visibility.get(key, True) and user_id in self._extender.user_viewers:
-                    expand(self._extender, self._extender.user_viewers[user_id]['tabs'])
+                    expand(self._extender, self._extender.user_viewers[user_id]['panel'])
 
         self.updateContextMenuText(col)
 
@@ -558,3 +594,6 @@ class UpdateTableEDT(Runnable):
             self._extender.tableModel.fireTableRowsDeleted(self._firstRow, self._lastRow)
         else:
             print("Invalid action in UpdateTableEDT")
+
+        if hasattr(self._extender, 'logTable') and self._extender.logTable:
+            self._extender.logTable.updateColumnWidths()
